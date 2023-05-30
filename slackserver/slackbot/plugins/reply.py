@@ -15,6 +15,7 @@ sys.path.append("{}/gametools".format(os.getcwd()))
 import ggssapi_gameresult as ggssapi
 
 import csv
+
 branchflag = "false"
 synchflag = "true"
 matchcsv = "./slackbot/order/match.csv"
@@ -85,6 +86,11 @@ def chooseBranch(ours):
                     tl.updateOption('branch', ans)
                     return ans
 
+@listen_to(r'^br\d')
+def listen_func(message):
+    branch = message.body['text']
+    tl.updateOption('branch', branch)
+    msg = 'You choose ' + branch + '.\n Choose the opponent team. ( ex. opp1opp12opp13 )\n When you choose \"opp\", you can select all teams\n'
 
     else:
         print(f"3:No exist branch team")
@@ -257,7 +263,7 @@ def doGame(option):
                 # execute a game at a host
                 if branchflag == "true":
                     branchproc.wait()
-                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag, oppname],
+                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag, o=======
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 # append process information

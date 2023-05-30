@@ -28,6 +28,8 @@ rm ${LOG_DIR}/*
 # start loop
 TEAM_R="$HOME/rcss/teams/$OPP/start.sh"
 
+#server::fixed_teamname_l = 'L' server::fixed_teamname_r = 'R' \
+
 rcssserver server::auto_mode = 1 \
        server::synch_mode = ${SYNCHFLAG} \
        server::team_l_start = ${TEAM_L} server::team_r_start = ${TEAM_R} \

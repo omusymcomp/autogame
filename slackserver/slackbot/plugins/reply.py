@@ -1,119 +1,159 @@
 # coding: utf-8
-import plugins.tools as tl
+import tools as tl
 import time
 import datetime
 import subprocess
 import shutil
 import re
-from slackbot.bot import respond_to
-from slackbot.bot import listen_to
-from slackbot.bot import default_reply
+# from slackbot.bot import respond_to
+# from slackbot.bot import listen_to
+# from slackbot.bot import default_reply
 
 import os
 import sys
 sys.path.append("{}/gametools".format(os.getcwd()))
 import ggssapi_gameresult as ggssapi
 
-branchlist = tl.getBranch()
+import csv
 branchflag = "false"
 synchflag = "true"
+matchcsv = "./slackbot/order/match.csv"
 
-@listen_to(r'^game$')
-def listen_func(message):
-    message.reply('Choose new or load for game setting. ( ex. new )\n new : start with new setting \n load : start with load your setting')
+def numCheck(str, sp):
+    if not str[-1].isdecimal():
+        print(f"  ***ERROR***:{sp}[{str[-1]}] is {sp}(Num){sp}(Num)...")
+        return False
+    else:
+        return True
 
 
-@listen_to(r'^new$')
-def listen_func(message):
-    msg = 'Choose the our team. ( ex. our1our12our13 )\n When you choose \"our\", you can select all teams\n'
+def chooseNewOrLoad():
+    print(f'1:Choose new or load for game setting. ( ex. new )\n  new : start with new setting \n  load : start with load your setting')
+    while True:
+        ans = input(" new or load: ")
+        if ans in ["new", "load"]:
+            return ans
+        else:
+            print(f" ***ERROR***:answer is \"new\" or \"load\"")
+
+def chooseOurTeam():
+    print(f'2:Choose the our team. ( ex. our1our12our13 )\n  When you choose \"our\", you can select all teams')
 
     ourlist = tl.getOur()
     for i in range(len(ourlist)):
-      msg = msg + 'our'+ str(i) + ' : ' + ourlist[i]+ '\n'
-    message.reply(msg)
+      print(f'  our{str(i)}:{ourlist[i]}')
+
+    while True:
+        ans = input("  our: ")
+        ours = ans.split('our')
+        if not numCheck(ours, "our"):
+            continue
+        for our in ours[1:]:
+            if not our.isdecimal():
+                print(f"  ***ERROR***:our[{our}] is our(Num)our(Num)...")
+                break
+            our = int(our)
+            if not our in list(range(len(ourlist))):
+                print(f"  ***ERROR***:our[{our}] is no ours")
+                break
+            if our == int(ours[-1]):
+                tl.updateOption('our', ans)
+                return ans
+
+def chooseBranch(ours):
+    if "our0" in ours:
+        tl.updateOption('our', ours)
+        print(f"3:Please set up to start the game.\n  Choose your branch.( ex. br0br5 )")
+        branchlist = tl.getBranch()
+        for i in range(len(branchlist)):
+            print(f"  br{str(i)} : {branchlist[i]}")
+
+        while True:
+            ans = input("  br: ")
+            branches = ans.split('br')
+            if not numCheck(branches, "br"):
+                continue
+            for branch in branches[1:]:
+                if not branch.isdecimal():
+                    print(f"  ***ERROR***:br[{branch}] is br(Num)br(Num)...")
+                    break
+                branch = int(branch)
+                if not branch in list(range(len(branchlist))):
+                    print(f"  ***ERROR***:br[{branch}] is no ours")
+                    break
+                if branch == int(branches[-1]):
+                    tl.updateOption('branch', ans)
+                    return ans
 
 
-@listen_to(r'^.*our0.*')
-def listen_func(message):
-    our = message.body['text']
-    tl.updateOption('our', our)
-    msg = 'Please set up to start the game.\n Choose your branch．( ex. br0br5 )\n'
-    for i in range(len(branchlist)):
-        msg = msg + 'br' + str(i) + ' : ' + branchlist[i] + ' \n'
-    message.reply(msg)
+    else:
+        print(f"3:No exist branch team")
 
-
-@listen_to(r'^br\d')
-def listen_func(message):
-    branch = message.body['text']
-    tl.updateOption('branch', branch)
-    msg = 'You choose ' + branch + '.\n Choose the opponent team. ( ex. opp1opp12opp13 )\n When you choose \"opp\", you can select all teams\n'
+def chooseOppTeam():
+    print(f"4:Choose the opponent team. ( ex. opp1opp12opp13 )\n  When you choose \"opp\", you can select all teams")
 
     opplist = tl.getOpponent()
     for i in range(len(opplist)):
-      msg = msg + 'opp'+ str(i) + ' : ' + opplist[i]+ '\n'
-    message.reply(msg)
+      print(f'  opp{str(i)}:{opplist[i]}')
+
+    while True:
+        ans = input("  opp: ")
+        opps = ans.split('opp')
+        if not numCheck(opps, "opp"):
+            continue
+        for opp in opps[1:]:
+            if not opp.isdecimal():
+                print(f"  ***ERROR***:opp[{opp}] is opp(Num)opp(Num)...")
+                break
+            opp = int(opp)
+            if not opp in list(range(len(opplist))):
+                print(f"  ***ERROR***:opp[{opp}] is no opps")
+                break
+            if opp == int(opps[-1]):
+                tl.updateOption('opponent', ans)
+                return ans
+
+def chooseGameNum():
+    print(f"5:How many games do you want to run? ( ex. 100 )")
+
+    while True:
+        print("  num: ", end="")
+        ans = input()
+        if not ans.isdecimal():
+            print(f"  ***ERROR***:num[{ans}] is int")
+        else:
+            tl.updateOption('gamenum', ans)
+            return ans
+
+def loadFile():
+    print(f"File Path:{matchcsv}")
+    option = {"our":"","branch":"","opp":"", "gamenum":"", "name":""}
+    with open(matchcsv) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            # print(row)
+            option.update({row[0]: row[1:]})
+            # print(option)
+    # print(option)
+    return option
 
 
-@listen_to(r'^(?=.*our\d)(?!.*our0).*')
-def listen_func(message):
-    our = message.body['text']
-    tl.updateOption('our', our)
-    msg = 'Choose the opponent team. ( ex. opp1opp12opp13 )\n When you choose \"opp\", you can select all teams\n'
-
-    opplist = tl.getOpponent()
-    for i in range(len(opplist)):
-      msg = msg + 'opp'+ str(i) + ' : ' + opplist[i]+ '\n'
-    message.reply(msg)
-
-
-@listen_to(r'^opp')
-def listen_func(message):
-    opponent = message.body['text']
-    tl.updateOption('opponent', opponent)
-
-    msg = 'You choose '+ opponent + ' for the opponent team.\n How many games do you want to run? ( ex. 100 )'
-    message.reply(msg)
-
-@listen_to(r'^\d+$')
-def listen_func(message):
-    gamenum = message.body['text']
-    tl.updateOption('gamenum', gamenum)
-    msg = 'We run ' + gamenum + ' games.'
-    message.reply(msg)
-
+def checkTime(ours, branches, opps, num):
+    print(f"We run {num} games.")
     msg = tl.confirmSetting()
-    message.reply(msg)
+    print(f'{msg}')
 
-
-@listen_to(r'^load$')
-def listen_func(message):
-    settinglist = tl.getSetting()
-    msg = 'Choose your setting．( ex. set5 )\n'
-    for i in range(len(settinglist)):
-        msg = msg + 'set' + str(i+1) + ' : ' + settinglist[i] + ' \n'
-    message.reply(msg)
-
-
-@listen_to(r'^set\d$')
-def listen_func(message):
-    set = message.body['text']
-    loadpath = tl.getLoadPath(set)
-
-    msg = tl.confirmSetting(loadpath)
-    message.reply(msg)
-
-
-@listen_to(r'^ok$')
-def cool_func(message):
+def doGame(option):
     dt_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-    shutil.copy('./slackbot/order/ORDER.pkl', './slackbot/order/'+dt_now+'.pkl')
+    # shutil.copy('./slackbot/order/ORDER.pkl', './slackbot/order/'+dt_now+'.pkl')
 
-    opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
-    msg = "ORDER:{}\n   Options:\n   branches:{}\n   n_games:{}\n   opponents:{}\n".format(dt_now, opt[0], opt[1], opt[2])
-    msg += "   total: {} games".format(len(opt[0])*int(opt[1])*len(opt[2]))
-    message.reply(msg)
+    # opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
+    opt = [option['our'] + option['branch'], option['gamenum'][0], option['opp']]
+    oppname = option['name'][0]
+    print(option)
+    print(f"ORDER:{dt_now}\n   Options:\n   ours:{opt[0]}\n   n_games:{opt[1]}\n   opponents:{opt[2]}")
+    print(f"total: {len(opt[0])*int(opt[1])*len(opt[2])} games")
 
     available_hostlist = tl.getHost()
 
@@ -135,14 +175,15 @@ def cool_func(message):
     # branch loop
     for our_name in opt[0]:
         # check our team is branch or teams
+        branchlist = tl.getBranch()
         if our_name in branchlist:
             branchflag = "true"
             print(our_name,"is branch")
             # send my team branch binary
-            subprocess.run(['./gametools/branchcompile.sh', our_name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            branchproc = subprocess.Popen(['./gametools/branchcompile.sh', our_name]) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         else:
             branchflag = "false"
-            print(our_name,"not branch")
+            print(our_name,"is not branch")
 
         # opponent loop
         for opp_name in opt[2]:
@@ -192,7 +233,7 @@ def cool_func(message):
                             total_count += 1
                             if total_count % 1000 == 0:
                                 msg = "Progress Report\n  {} games are finished.\n  {} games left.".format(total_count, len(opt[0]) * int(opt[1]) * len(opt[2]) - total_count)
-                                message.reply(msg)
+                                print(msg)
 
                     # if finished processes are found, "endgame.sh" will be executed
                     while finished_procs["proc"] and finished_procs["setting"]:
@@ -209,12 +250,14 @@ def cool_func(message):
                     if host is not None:
                         break
 
-                msg = "Host {} is assigned (Settings: branch {} gameID {} opp {})\n".format(host, our_name, game, opp_name)
+                msg = "Host {} is assigned (Settings: our {} gameID {} opp {})\n".format(host, our_name, game, opp_name)
                 # message.reply(msg)
                 print(msg)
 
                 # execute a game at a host
-                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag],
+                if branchflag == "true":
+                    branchproc.wait()
+                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag, oppname],
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 # append process information
@@ -306,13 +349,20 @@ def cool_func(message):
         print('r:', read_count)
         print('w:', write_count)
 
-    msg = 'ORDER:'+dt_now+' finish!\nDo you want to save your setting? If you want, type the file name.　(ex. save:FILENAME )'
-    message.reply(msg)
+    msg = 'ORDER:'+dt_now+' finish!'
+    print(msg)
 
 
-@listen_to(r'^save:\w+$')
-def listen_func(message):
-    savepath = message.body['text'].replace('save:', '')
-    shutil.copy('./slackbot/setting/option.pkl', './slackbot/setting/'+savepath)
-    msg = 'Save the option to ' + savepath + '.'
-    message.reply(msg)
+def main():
+    # option = chooseNewOrLoad()
+    # if option == "new":
+    #     ours = chooseOurTeam()
+    #     branches = chooseBranch(ours)
+    #     opps = chooseOppTeam()
+    #     num = chooseGameNum()
+    option = loadFile()
+    doGame(option)
+
+if __name__ == "__main__":
+    print('start autogame')
+    main()

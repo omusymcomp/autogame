@@ -4,6 +4,8 @@ GAMENUM=$2
 OPP=$3
 BRANCHFLAG=$4
 SYNCHFLAG=$5
+RIGHTNAME=$6
+
 
 source ../config
 export PATH=$LOGANALYZER3_DIR:$PATH
@@ -17,10 +19,8 @@ if "${BRANCHFLAG}"; then
 	#if use same team name
 	#TEAM_L="'${OUR_TEAM}/src/start.sh -t develop --offline-logging'"
 else
-	TEAM_L="$HOME/rcss/teams/$OUR/start.sh"
+	TEAM_L="'$HOME/rcss/teams/$OUR/start.sh'"
 fi
-
-echo ${TEAM_L}
 
 mkdir -p ${LOG_DIR}
 rm ${LOG_DIR}/*
@@ -50,8 +50,10 @@ ${HOME}/rcss/teams/${OPP}/kill
 
 # rename game logs
 mkdir -p ${LOG_DIR}/game${GAMENUM}
-mv /tmp/*.ocl ${LOG_DIR}/game${GAMENUM}
-tar czf ${LOG_DIR}/game${GAMENUM}.ocl.tar.gz ${LOG_DIR}/game${GAMENUM}
+if "${BRANCHFLAG}"; then
+	mv /tmp/*.ocl ${LOG_DIR}/game${GAMENUM}
+	tar czf ${LOG_DIR}/game${GAMENUM}.ocl.tar.gz ${LOG_DIR}/game${GAMENUM}
+fi
 YEAR=`date +%Y`
 mv ${LOG_DIR}/${YEAR}*.rcg.gz ${LOG_DIR}/game${GAMENUM}.rcg.gz
 mv ${LOG_DIR}/${YEAR}*.rcl.gz ${LOG_DIR}/game${GAMENUM}.rcl.gz

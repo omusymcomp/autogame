@@ -14,8 +14,10 @@ import sys
 sys.path.append("{}/gametools".format(os.getcwd()))
 import ggssapi_gameresult as ggssapi
 
+import csv
 branchflag = "false"
 synchflag = "true"
+matchcsv = "./slackbot/order/match.csv"
 
 def numCheck(str, sp):
     if not str[-1].isdecimal():
@@ -123,17 +125,33 @@ def chooseGameNum():
             tl.updateOption('gamenum', ans)
             return ans
 
+def loadFile():
+    print(f"File Path:{matchcsv}")
+    option = {"our":"","branch":"","opp":"", "gamenum":"", "name":""}
+    with open(matchcsv) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            # print(row)
+            option.update({row[0]: row[1:]})
+            # print(option)
+    # print(option)
+    return option
+
+
 def checkTime(ours, branches, opps, num):
     print(f"We run {num} games.")
     msg = tl.confirmSetting()
     print(f'{msg}')
 
-def doGame():
+def doGame(option):
     dt_now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-    shutil.copy('./slackbot/order/ORDER.pkl', './slackbot/order/'+dt_now+'.pkl')
+    # shutil.copy('./slackbot/order/ORDER.pkl', './slackbot/order/'+dt_now+'.pkl')
 
-    opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
+    # opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
+    opt = [option['our'] + option['branch'], option['gamenum'][0], option['opp']]
+    oppname = option['name'][0]
+    print(option)
     print(f"ORDER:{dt_now}\n   Options:\n   ours:{opt[0]}\n   n_games:{opt[1]}\n   opponents:{opt[2]}")
     print(f"total: {len(opt[0])*int(opt[1])*len(opt[2])} games")
 
@@ -239,7 +257,7 @@ def doGame():
                 # execute a game at a host
                 if branchflag == "true":
                     branchproc.wait()
-                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag],
+                proc = subprocess.Popen(['./gametools/startgame.sh', dirname, host, our_name, str(game), opp_name, branchflag, synchflag, oppname],
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 # append process information
@@ -331,18 +349,19 @@ def doGame():
         print('r:', read_count)
         print('w:', write_count)
 
-    msg = 'ORDER:'+dt_now+' finish!\nDo you want to save your setting? If you want, type the file name.　(ex. save:FILENAME )'
+    msg = 'ORDER:'+dt_now+' finish!'
     print(msg)
 
 
 def main():
-    option = chooseNewOrLoad()
-    ours = chooseOurTeam()
-    branches = chooseBranch(ours)
-    opps = chooseOppTeam()
-    num = chooseGameNum()
-    checkTime(ours, branches, opps, num)
-    doGame()
+    # option = chooseNewOrLoad()
+    # if option == "new":
+    #     ours = chooseOurTeam()
+    #     branches = chooseBranch(ours)
+    #     opps = chooseOppTeam()
+    #     num = chooseGameNum()
+    option = loadFile()
+    doGame(option)
 
 if __name__ == "__main__":
     print('start autogame')

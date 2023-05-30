@@ -5,11 +5,6 @@ import datetime
 import subprocess
 import shutil
 import re
-
-# from slackbot.bot import respond_to
-# from slackbot.bot import listen_to
-# from slackbot.bot import default_reply
-
 import os
 import sys
 
@@ -166,7 +161,6 @@ def doGame(option):
 
     # opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
     opt = [option["our"] + option["branch"], option["gamenum"][0], option["opp"]]
-    oppname = option["name"][0]
     print(option)
     print(
         f"ORDER:{dt_now}\n   Options:\n   ours:{opt[0]}\n   n_games:{opt[1]}\n   opponents:{opt[2]}"

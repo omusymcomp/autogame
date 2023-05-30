@@ -1,0 +1,6 @@
+{
+    "our": ["path/to/team_1, path/to/team_2"],
+    "branch": ["branch_name_1", "branch_name_2"], 
+    "opp": ["path/to/team_A, path/to/team_B"],
+    "gamenum": 100
+}

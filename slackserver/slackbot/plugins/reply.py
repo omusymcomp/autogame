@@ -1,21 +1,19 @@
 # coding: utf-8
-import tools as tl
+import os
+import sys
+import json
 import time
 import datetime
 import subprocess
-import shutil
-import re
-import os
-import sys
+import tools as tl
 
 sys.path.append("{}/gametools".format(os.getcwd()))
 import ggssapi_gameresult as ggssapi
 
-import csv
 
 branchflag = "false"
 synchflag = "true"
-matchcsv = "./slackbot/order/match.csv"
+matchjson = "./slackbot/order/match.json"
 
 
 def numCheck(str, sp):
@@ -136,15 +134,10 @@ def chooseGameNum():
 
 
 def loadFile():
-    print(f"File Path:{matchcsv}")
-    option = {"our": "", "branch": "", "opp": "", "gamenum": "", "name": ""}
-    with open(matchcsv) as f:
-        reader = csv.reader(f)
-        for row in reader:
-            # print(row)
-            option.update({row[0]: row[1:]})
-            # print(option)
-    # print(option)
+    print(f"File Path:{matchjson}")
+    with open(matchjson) as f:
+        option = json.load(f)
+    print(f"option={option}")
     return option
 
 
@@ -157,15 +150,10 @@ def checkTime(ours, branches, opps, num):
 def doGame(option):
     dt_now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
-    # shutil.copy('./slackbot/order/ORDER.pkl', './slackbot/order/'+dt_now+'.pkl')
-
-    # opt = tl.getOption('./slackbot/order/'+dt_now+'.pkl')
-    opt = [option["our"] + option["branch"], option["gamenum"][0], option["opp"]]
-    print(option)
     print(
-        f"ORDER:{dt_now}\n   Options:\n   ours:{opt[0]}\n   n_games:{opt[1]}\n   opponents:{opt[2]}"
+        f"ORDER:{dt_now}\n\tours:{option['our']}\n\tn_games:{option['gamenum']}\n\topponents:{option['opp']}"
     )
-    print(f"total: {len(opt[0])*int(opt[1])*len(opt[2])} games")
+    print(f"total: {len(option['our'])*option['gamenum']*len(option['opp'])} games")
 
     available_hostlist = tl.getHost()
 
@@ -179,7 +167,7 @@ def doGame(option):
     total_count = 0
 
     # branch loop
-    for our_name in opt[0]:
+    for our_name in option["our"]:
         # check our team is branch or teams
         branchlist = tl.getBranch()
         if our_name in branchlist:
@@ -194,7 +182,7 @@ def doGame(option):
             print(our_name, "is not branch")
 
         # opponent loop
-        for opp_name in opt[2]:
+        for opp_name in option["opp"]:
             if our_name == opp_name:
                 print(our_name, opp_name, "same team")
                 continue
@@ -222,7 +210,7 @@ def doGame(option):
             all_settings.append([dirname, our_name, opp_name])
 
             # game loop
-            for game in range(int(opt[1])):
+            for game in range(int(option["gamenum"])):
                 # check host
                 # loop until next host is found
                 host = None
@@ -243,7 +231,9 @@ def doGame(option):
                             if total_count % 1000 == 0:
                                 msg = "Progress Report\n  {} games are finished.\n  {} games left.".format(
                                     total_count,
-                                    len(opt[0]) * int(opt[1]) * len(opt[2])
+                                    len(option["our"])
+                                    * int(option["gamenum"])
+                                    * len(option["opp"])
                                     - total_count,
                                 )
                                 print(msg)

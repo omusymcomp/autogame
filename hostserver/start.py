@@ -5,15 +5,57 @@ import json
 import time
 import datetime
 import subprocess
-import tools as tl
+from typing import List, TypedDict
 
 sys.path.append("{}/gametools".format(os.getcwd()))
-import ggssapi_gameresult as ggssapi
+import gametools.tools as tl
+import gametools.ggssapi_gameresult as ggssapi
 
 
-branchflag = "false"
-synchflag = "true"
-matchjson = "./slackbot/order/match.json"
+class ConfigDict(TypedDict):
+    our: List[str]
+    branch: List[str]
+    opp: List[str]
+    gamenum: int
+
+
+class Config:
+    def __init__(
+        self, our: List[str], branch: List[str], opp: List[str], num: int
+    ) -> None:
+        self.our: List[str] = our
+        self.branch: List[str] = branch
+        self.opp: List[str] = opp
+        self.num: int = num
+
+    @classmethod
+    def from_dict(cls, dict: ConfigDict) -> "Config":
+        our = dict["our"]
+        branch = dict["branch"]
+        opp = dict["opp"]
+        num = dict["gamenum"]
+        return Config(our, branch, opp, num)
+
+    @classmethod
+    def loadFile(cls, path: str) -> "Config":
+        print(f"File Path:{path}")
+        with open(path) as f:
+            option = json.load(f)
+        print(f"option={option}")
+        return cls.from_dict(option)
+
+
+class TeamInf(TypedDict):
+    path: str
+    is_branch: bool
+    is_synch: bool
+
+
+def boolToStr(flag: bool) -> str:
+    if flag:
+        return "true"
+    else:
+        return "false"
 
 
 def numCheck(str, sp):
@@ -133,28 +175,59 @@ def chooseGameNum():
             return ans
 
 
-def loadFile():
-    print(f"File Path:{matchjson}")
-    with open(matchjson) as f:
-        option = json.load(f)
-    print(f"option={option}")
-    return option
-
-
 def checkTime(ours, branches, opps, num):
     print(f"We run {num} games.")
     msg = tl.confirmSetting()
     print(f"{msg}")
 
 
-def doGame(option):
+class AutoGame:
+    left_teams: List[TeamInf]
+    right_teams: List[TeamInf]
+    game_num: int
+
+    def setLeftTeam(
+        self, teams: List[str], branchies: List[str], branch_list: List[str]
+    ) -> None:
+        left_teams: List[TeamInf] = []
+        for i, team in enumerate(teams + branchies):
+            # check our team is branch or teams
+            if team in branch_list:
+                is_branch = True
+                print(f"[{i}]:{team} is branch")
+            else:
+                is_branch = False
+                print(f"[{i}]:{team} is not branch")
+
+            left_teams.append(
+                {
+                    "path": team,
+                    "is_branch": is_branch,
+                    "is_synch": tl.is_available_synch(team),
+                }
+            )
+        print(f"left_teams = {left_teams}")
+        self.left_teams = left_teams
+
+    def setRightTeam(self, teams: List[str]) -> None:
+        right_teams: List[TeamInf] = []
+        for team in teams:
+            # check our team is branch or teams
+            right_teams.append(
+                {
+                    "path": team,
+                    "is_branch": False,
+                    "is_synch": tl.is_available_synch(team),
+                }
+            )
+        print(f"right_teams = {right_teams}")
+        self.right_teams = right_teams
+
+
+def doGame(option: Config):
+    auto_game = AutoGame()
+
     dt_now = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-
-    print(
-        f"ORDER:{dt_now}\n\tours:{option['our']}\n\tn_games:{option['gamenum']}\n\topponents:{option['opp']}"
-    )
-    print(f"total: {len(option['our'])*option['gamenum']*len(option['opp'])} games")
-
     available_hostlist = tl.getHost()
 
     working_procs = {"proc": [], "setting": []}
@@ -166,51 +239,36 @@ def doGame(option):
     # -------- #
     total_count = 0
 
-    # branch loop
-    for our_name in option["our"]:
-        # check our team is branch or teams
-        branchlist = tl.getBranch()
-        if our_name in branchlist:
-            branchflag = "true"
-            print(our_name, "is branch")
+    # set teams
+    auto_game.setLeftTeam(option.our, option.branch, tl.getBranch())
+    auto_game.setRightTeam(option.opp)
+
+    # left loop
+    for left_team in auto_game.left_teams:
+        if left_team["is_branch"]:
             # send my team branch binary
             branchproc = subprocess.Popen(
-                ["./gametools/branchcompile.sh", our_name]
+                ["./gametools/branchcompile.sh", left_team["path"]]
             )  # , stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        else:
-            branchflag = "false"
-            print(our_name, "is not branch")
 
-        # opponent loop
-        for opp_name in option["opp"]:
-            if our_name == opp_name:
-                print(our_name, opp_name, "same team")
+        # right loop
+        for rigth_team in auto_game.right_teams:
+            if left_team["path"] == rigth_team["path"]:
+                print(left_team, rigth_team, "same team")
                 continue
-
-            # check opp team can use synce
-            if ("fractals" in our_name) or ("fractals" in opp_name):
-                synchflag = "false"
-                print(our_name, opp_name, ":synchflag ", synchflag)
-            elif ("fraunited" in our_name) or ("fraunited" in opp_name):
-                synchflag = "false"
-                print(our_name, opp_name, ":synchflag ", synchflag)
-            elif ("oxsy" in our_name) or ("oxsy" in opp_name):
-                synchflag = "false"
-                print(our_name, opp_name, ":synchflag ", synchflag)
-            else:
-                synchflag = "true"
-                print(our_name, opp_name, ":synchflag ", synchflag)
 
             # dir name can be specified by dt_now, our_name and opp_name
             dirname = "{}/{}_{}".format(
-                dt_now, our_name.split("/")[-1], opp_name.replace("/", "-")
+                dt_now,
+                left_team["path"].split("/")[-1],
+                rigth_team["path"].replace("/", "-"),
             )
 
             # append setting information
-            all_settings.append([dirname, our_name, opp_name])
+            all_settings.append([dirname, left_team["path"], rigth_team["path"]])
 
             # game loop
-            for game in range(int(option["gamenum"])):
+            for game in range(option.num):
                 # check host
                 # loop until next host is found
                 host = None
@@ -231,9 +289,9 @@ def doGame(option):
                             if total_count % 1000 == 0:
                                 msg = "Progress Report\n  {} games are finished.\n  {} games left.".format(
                                     total_count,
-                                    len(option["our"])
-                                    * int(option["gamenum"])
-                                    * len(option["opp"])
+                                    len(auto_game.left_teams)
+                                    * len(auto_game.right_teams)
+                                    * option.num
                                     - total_count,
                                 )
                                 print(msg)
@@ -247,9 +305,9 @@ def doGame(option):
                                 "./gametools/endgame.sh",
                                 s[0],
                                 s[1],
-                                s[2],
+                                s[2]["path"],
                                 str(s[3]),
-                                s[4],
+                                s[4]["path"],
                             ]
                         )
 
@@ -272,25 +330,25 @@ def doGame(option):
 
                 msg = (
                     "Host {} is assigned (Settings: our {} gameID {} opp {})\n".format(
-                        host, our_name, game, opp_name
+                        host, left_team["path"], game, rigth_team["path"]
                     )
                 )
                 # message.reply(msg)
                 print(msg)
 
                 # execute a game at a host
-                if branchflag == "true":
+                if left_team["is_branch"]:
                     branchproc.wait()
                 proc = subprocess.Popen(
                     [
                         "./gametools/startgame.sh",
                         dirname,
                         host,
-                        our_name,
+                        left_team["path"],
                         str(game),
-                        opp_name,
-                        branchflag,
-                        synchflag,
+                        rigth_team["path"],
+                        boolToStr(left_team["is_branch"]),
+                        boolToStr(left_team["is_synch"] and rigth_team["is_synch"]),
                     ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -299,7 +357,7 @@ def doGame(option):
                 # append process information
                 working_procs["proc"].append(proc)
                 working_procs["setting"].append(
-                    [dirname, host, our_name, game, opp_name]
+                    [dirname, host, left_team, game, rigth_team]
                 )
 
     # wait all process
@@ -310,7 +368,17 @@ def doGame(option):
     while working_procs["proc"] and working_procs["setting"]:
         p = working_procs["proc"].pop(0)
         s = working_procs["setting"].pop(0)
-        subprocess.run(["./gametools/endgame.sh", s[0], s[1], s[2], str(s[3]), s[4]])
+        print(f"s2 = {s}")
+        subprocess.run(
+            [
+                "./gametools/endgame.sh",
+                s[0],
+                s[1],
+                s[2]["path"],
+                str(s[3]),
+                s[4]["path"],
+            ]
+        )
         # recover available hostlist (but not needed)
         available_hostlist.append(s[1])
 
@@ -319,8 +387,9 @@ def doGame(option):
     write_count = 0
     for setting in all_settings:
         dirname = setting[0]
-        our_name = setting[1]
-        opp_name = setting[2]
+        left_team = setting[1]
+        rigth_team = setting[2]
+        print(left_team, rigth_team)
 
         # initialize
         count = 0
@@ -389,7 +458,7 @@ def doGame(option):
             write_count = 0
             read_count = 0
         tmp_read_count, tmp_write_count = ggssapi.writeResults(
-            dt_now, our_name, opp_name, result_map
+            dt_now, left_team, rigth_team, result_map
         )
         read_count += tmp_read_count
         write_count += tmp_write_count
@@ -401,7 +470,7 @@ def doGame(option):
 
 
 def main():
-    option = loadFile()
+    option = Config.loadFile("./order/match_test.json")
     doGame(option)
 
 

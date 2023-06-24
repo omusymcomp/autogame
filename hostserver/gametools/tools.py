@@ -129,6 +129,8 @@ def is_available_synch(team: str) -> bool:
         return False
     elif team == "fraunited":
         return False
+    elif team == "fra-united":
+        return False
     elif team == "fractals":
         return False
     else:

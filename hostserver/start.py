@@ -248,8 +248,10 @@ def doGame(option: Config):
         if left_team["is_branch"]:
             # send my team branch binary
             branchproc = subprocess.Popen(
-                ["./gametools/branchcompile.sh", left_team["path"]]
-            )  # , stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                ["./gametools/branchcompile.sh", left_team["path"]],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
 
         # right loop
         for rigth_team in auto_game.right_teams:
@@ -368,7 +370,6 @@ def doGame(option: Config):
     while working_procs["proc"] and working_procs["setting"]:
         p = working_procs["proc"].pop(0)
         s = working_procs["setting"].pop(0)
-        print(f"s2 = {s}")
         subprocess.run(
             [
                 "./gametools/endgame.sh",

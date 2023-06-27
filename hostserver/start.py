@@ -250,7 +250,7 @@ def doGame(option: Config):
             branchproc = subprocess.Popen(
                 ["./gametools/branchcompile.sh", left_team["path"]],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
 
         # right loop
@@ -332,17 +332,18 @@ def doGame(option: Config):
                     if host is not None:
                         break
 
+                # execute a game at a host
+                if left_team["is_branch"]:
+                    branchproc.wait()
+                    print(f"Finish team building( branch = {left_team['path']}")
+
                 msg = (
                     "Host {} is assigned (Settings: our {} gameID {} opp {})\n".format(
                         host, left_team["path"], game, rigth_team["path"]
                     )
                 )
-                # message.reply(msg)
                 print(msg)
 
-                # execute a game at a host
-                if left_team["is_branch"]:
-                    branchproc.wait()
                 proc = subprocess.Popen(
                     [
                         "./gametools/startgame.sh",

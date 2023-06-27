@@ -125,13 +125,13 @@ def getHost():
 
 
 def is_available_synch(team: str) -> bool:
-    if team == "oxsy":
+    if "oxsy" in team:
         return False
-    elif team == "fraunited":
+    elif "fraunited" in team:
         return False
-    elif team == "fra-united":
+    elif "fra-united" in team:
         return False
-    elif team == "fractals":
+    elif "fractals" in team:
         return False
     else:
         return True

@@ -310,7 +310,9 @@ def doGame(option: Config):
                                 s[2]["path"],
                                 str(s[3]),
                                 s[4]["path"],
-                            ]
+                            ],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
                         )
 
                     for i, h in enumerate(available_hostlist):

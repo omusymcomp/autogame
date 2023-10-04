@@ -5,7 +5,7 @@ OPP=$3
 BRANCHFLAG=$4
 SYNCHFLAG=$5
 
-echo "(branch:${BRANCHFLAG})${OUR} vs ${OPP} (synch:${SYNCHFLAG})[${GAMENUM}-`hostname`]"
+echo "[${GAMENUM}-`hostname`](branch:${BRANCHFLAG})${OUR} vs ${OPP}(synch:${SYNCHFLAG})"
 source ../config
 export PATH=$LOGANALYZER3_DIR:$PATH
 

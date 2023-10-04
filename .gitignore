@@ -3,3 +3,4 @@
 slackserver/gametools/*.json
 *.pkl
 log/
+nohup.out

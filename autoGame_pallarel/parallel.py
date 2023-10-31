@@ -11,6 +11,8 @@ rel_pos = "$HOME/rcss/ham/omuHam/src/rel_pos/"
 def autoGame(port):
     runShell([f"./autogame.sh {port} {rel_pos}"],shell=True)
 
+start = time.time()
+
 log_path = "./log/"
 if not os.path.exists(log_path):
     os.makedirs(log_path)
@@ -28,3 +30,6 @@ for num in range(GAME):
     for n in range(parallel):
         tmp = para[n]
         tmp.join()
+
+end = time.time()
+print("Time", (end-start))

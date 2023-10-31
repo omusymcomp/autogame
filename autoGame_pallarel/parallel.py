@@ -1,14 +1,19 @@
 from subprocess import run as runShell
 import threading
 import time
+import os
 
-GAME = 2
-parallel = 2
+GAME = 100
+parallel = 10
 
 rel_pos = "$HOME/rcss/ham/omuHam/src/rel_pos/"
 
 def autoGame(port):
     runShell([f"./autogame.sh {port} {rel_pos}"],shell=True)
+
+log_path = "./log/"
+if not os.path.exists(log_path):
+    os.makedirs(log_path)
 
 for num in range(GAME):
     port = 6000
